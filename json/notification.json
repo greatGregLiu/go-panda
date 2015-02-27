@@ -1,0 +1,10 @@
+{
+  "url": "null",
+  "delay": 10,
+  "events": {
+    "video_created": false,
+    "video_encoded": false,
+    "encoding_progress": false,
+    "encoding_completed": false
+  }
+}

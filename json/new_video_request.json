@@ -1,0 +1,5 @@
+{
+  "profiles": ["profile1", "profile2"],
+  "path_format": "path_format",
+  "payload": "payload"
+}
