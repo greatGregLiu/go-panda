@@ -72,6 +72,15 @@ func (m *Manager) NewEncoding(er *EncodingRequest) (e Encoding, err error) {
 	return
 }
 
+func (m *Manager) Encodings() (es []Encoding, err error) {
+	if err = m.manageGet(encodingsPath, &es); err != nil {
+		for i := range es {
+			es[i].cl = m.cl
+		}
+	}
+	return
+}
+
 func (m *Manager) EncodingId(id string) (e Encoding, err error) {
 	if err = m.manageGet(fmt.Sprintf(encodingsIdPath, id), &e); err == nil {
 		e.cl = m.cl
