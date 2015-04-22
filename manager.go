@@ -143,6 +143,15 @@ func (m *Manager) NewVideoReader(r io.Reader, name string, vr *VideoRequest) (v 
 	return
 }
 
+func (m *Manager) Videos() (vs []Video, err error) {
+	if err = m.manageGet(videosPath, &vs); err == nil {
+		for i := range vs {
+			vs[i].cl = m.cl
+		}
+	}
+	return
+}
+
 func (m *Manager) VideoId(id string) (v Video, err error) {
 	if err = m.manageGet(fmt.Sprintf(videosIdPath, id), &v); err == nil {
 		v.cl = m.cl
