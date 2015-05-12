@@ -1,5 +1,7 @@
-//go:generate structgen -dir=json -tags=url -o=models.go -pkg=panda -types=created_at:Time,updated_at:Time,height:int,width:int,duration:int,file_size:int64,audio_bitrate:int,audio_channels:int,video_bitrate:int,audio_sample_rate:int,watermark_bottom:int,watermark_height:int,watermark_left:int,watermark_right:int,watermark_top:int,watermark_width:int,keyframe_interval:int,buffer_size:int,max_rate:int,frame_count:int,h264_crf:int,status:Status,page:int,per_page:int,aspect_mode:AspectMode
+// Package panda provides a client for PandaStream service
 package panda
+
+//go:generate structgen -dir=json -tags=url -o=models.go -pkg=panda -types=created_at:Time,updated_at:Time,height:int,width:int,duration:int,file_size:int64,audio_bitrate:int,audio_channels:int,video_bitrate:int,audio_sample_rate:int,watermark_bottom:int,watermark_height:int,watermark_left:int,watermark_right:int,watermark_top:int,watermark_width:int,keyframe_interval:int,buffer_size:int,max_rate:int,frame_count:int,h264_crf:int,status:Status,page:int,per_page:int,aspect_mode:AspectMode
 
 import (
 	"bytes"
@@ -68,16 +70,16 @@ func (m *Manager) manageGet(url string, v interface{}, params url.Values) (err e
 	return
 }
 
-func (m *Manager) managePost(url string, r io.Reader, p, v interface{}) (err error) {
+func (m *Manager) managePost(url string, r io.Reader, p, v interface{}) error {
 	params, err := query.Values(p)
 	if err != nil {
-		return
+		return err
 	}
 	b, err := m.Client.Post(url, "", params, r)
-	if err == nil {
-		err = json.Unmarshal(b, v)
+	if err != nil {
+		return err
 	}
-	return
+	return json.Unmarshal(b, v)
 }
 
 // Cloud gets cloud by the given cloud ID
@@ -160,7 +162,7 @@ func (m *Manager) Delete(v interface{}) error {
 // NewProfile creates new profile based on profile request object
 func (m *Manager) NewProfile(pr *NewProfileRequest) (*Profile, error) {
 	p := new(Profile)
-	if err := m.managePost(profilesPath, nil, pr, p); err == nil {
+	if err := m.managePost(profilesPath, nil, pr, p); err != nil {
 		return nil, err
 	}
 	return p, nil
