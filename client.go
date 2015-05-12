@@ -37,11 +37,20 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
-func (cl *Client) host() string {
+func (cl *Client) hostPort() string {
 	if cl.Host != "" {
 		return cl.Host
 	}
 	return HostUS
+}
+
+func (cl *Client) host() string {
+	hp := cl.hostPort()
+	i := strings.Index(hp, ":")
+	if i < 0 {
+		return hp
+	}
+	return hp[:i]
 }
 
 func (cl *Client) httpclient() *http.Client {
@@ -72,12 +81,12 @@ func (cl *Client) buildSignature(v url.Values, method, u string) (sign string, e
 
 func (cl *Client) buildURL(v url.Values, urlPath string) *url.URL {
 	scheme := "http"
-	if strings.HasSuffix(cl.host(), ":443") {
+	if strings.HasSuffix(cl.hostPort(), ":443") {
 		scheme = "https"
 	}
 	return &url.URL{
 		Scheme:   scheme,
-		Host:     cl.host(),
+		Host:     cl.hostPort(),
 		Path:     path.Join("v2", urlPath),
 		RawQuery: v.Encode(),
 	}

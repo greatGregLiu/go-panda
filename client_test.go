@@ -10,7 +10,7 @@ import (
 func TestBuildSignature(t *testing.T) {
 	expected := "kVnZs/NX13ldKPdhFYoVnoclr8075DwiZF0TGgIbMsc="
 	cl := Client{
-		Host: "api.pandastream.com",
+		Host: "api.pandastream.com:8080",
 		Options: &ClientOptions{
 			CloudID:   "123456789",
 			AccessKey: "abcdefgh",
