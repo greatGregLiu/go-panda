@@ -144,12 +144,12 @@ func (m *Manager) Retry(id string) error {
 func (m *Manager) Delete(v interface{}) error {
 	var path string
 	switch t := v.(type) {
-	case Profile:
+	case *Profile:
 		path = fmt.Sprintf(profilesIdPath, t.ID)
-	case Video:
+	case *Video:
 		path = fmt.Sprintf(videosIdDeletePath, t.ID)
-	case Encoding:
-		path = fmt.Sprintf(encodingsPath, t.ID)
+	case *Encoding:
+		path = fmt.Sprintf(encodingsIdPath, t.ID)
 	default:
 		panic("Invalid type")
 	}

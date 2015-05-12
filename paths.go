@@ -5,7 +5,7 @@ const videosIdPath = "/videos/%s.json"
 const videosIdEncodingPath = "/videos/%s/encodings.json"
 const videosIdMetaDataPath = "/videos/%s/metadata.json"
 const videosUploadPath = "/videos/upload.json"
-const videosIdDeletePath = "/videos/%s"
+const videosIdDeletePath = "/videos/%s.json"
 const videosIdDeleteSourcePath = "/videos/%s/source.json"
 
 const encodingsPath = "/encodings.json"
