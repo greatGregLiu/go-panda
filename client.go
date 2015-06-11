@@ -26,6 +26,7 @@ type ClientOptions struct {
 	CloudID   string
 	AccessKey string
 	SecretKey string
+	Namespace string
 }
 
 var queryFixer = strings.NewReplacer("+", "%20", "%5B", "[", "%5D", "]", "%7E", "~")
@@ -51,6 +52,13 @@ func (cl *Client) host() string {
 		return hp
 	}
 	return hp[:i]
+}
+
+func (cl *Client) namespace() string {
+	if cl.Options.Namespace == "" {
+		return "v2"
+	}
+	return cl.Options.Namespace
 }
 
 func (cl *Client) httpclient() *http.Client {
@@ -87,7 +95,7 @@ func (cl *Client) buildURL(v url.Values, urlPath string) *url.URL {
 	return &url.URL{
 		Scheme:   scheme,
 		Host:     cl.hostPort(),
-		Path:     path.Join("v2", urlPath),
+		Path:     path.Join(cl.namespace(), urlPath),
 		RawQuery: v.Encode(),
 	}
 }
