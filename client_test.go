@@ -38,7 +38,8 @@ func TestBuildUrl(t *testing.T) {
 	}{
 		{
 			Client{
-				Host: "localhost:9999",
+				Host:    "localhost:9999",
+				Options: &ClientOptions{},
 			},
 			url.Values{},
 			"/videos.json",
@@ -46,7 +47,8 @@ func TestBuildUrl(t *testing.T) {
 		},
 		{
 			Client{
-				Host: "localhost:80",
+				Host:    "localhost:80",
+				Options: &ClientOptions{},
 			},
 			url.Values{"cloud_id": []string{"12345"}},
 			"/videos.json",
@@ -54,7 +56,8 @@ func TestBuildUrl(t *testing.T) {
 		},
 		{
 			Client{
-				Host: "localhost",
+				Host:    "localhost",
+				Options: &ClientOptions{},
 			},
 			url.Values{"cloud_id": []string{"12345"}},
 			"/videos.json",
@@ -62,7 +65,8 @@ func TestBuildUrl(t *testing.T) {
 		},
 		{
 			Client{
-				Host: "localhost:443",
+				Host:    "localhost:443",
+				Options: &ClientOptions{},
 			},
 			url.Values{},
 			"/videos.json",

@@ -2,28 +2,12 @@ package live
 
 import (
 	"encoding/json"
-	"fmt"
-	"net/http"
 	"time"
 )
 
 type Error struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
-}
-
-func (e *Error) Error() string {
-	var msg string
-	if e.Err == nil {
-		msg = http.StatusText(e.status())
-	} else {
-		msg = e.Err.Error()
-	}
-	return fmt.Sprintf("%s (code=%d)", msg, e.Code)
-}
-
-func (e *Error) status() int {
-	return e.Code / 100
 }
 
 type Node struct {
