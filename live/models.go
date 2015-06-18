@@ -69,14 +69,14 @@ type Stream struct {
 type State uint8
 
 const (
-	StateInvalid    = 0
-	StateNew        = 1
-	StateQueued     = 2
-	StatePending    = 3
-	StateInProgress = 4
-	StateEnded      = 5
-	StateError      = 6
-	StateReady      = 7
+	StateInvalid    = State(0)
+	StateNew        = State(1)
+	StateQueued     = State(2)
+	StatePending    = State(3)
+	StateInProgress = State(4)
+	StateEnded      = State(5)
+	StateError      = State(6)
+	StateReady      = State(7)
 )
 
 var stateNames = map[State]string{
