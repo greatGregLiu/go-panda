@@ -27,6 +27,7 @@ type ClientOptions struct {
 	AccessKey string
 	SecretKey string
 	Namespace string
+	Token     string
 }
 
 var queryFixer = strings.NewReplacer("+", "%20", "%5B", "[", "%5D", "]", "%7E", "~")
@@ -105,7 +106,7 @@ func (cl *Client) do(method, path, cntType string,
 	if params == nil {
 		params = url.Values{}
 	}
-	if err = cl.SignParams(method, path, params); err != nil {
+	if err = cl.authParams(method, path, params); err != nil {
 		return
 	}
 	req, err := http.NewRequest(method, cl.buildURL(params, path).String(), r)
@@ -130,6 +131,14 @@ func (cl *Client) do(method, path, cntType string,
 		err = e
 	}
 	return
+}
+
+func (cl *Client) authParams(method, path string, params url.Values) error {
+	if cl.Options.Token != "" {
+		params.Add("token", cl.Options.Token)
+		return nil
+	}
+	return cl.SignParams(method, path, params)
 }
 
 // SignParams signs given parameters by adding required authorization
