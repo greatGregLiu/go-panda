@@ -44,17 +44,17 @@ func (nodes *Nodes) UnmarshalJSON(p []byte) error {
 }
 
 type Profile struct {
-	ProfileID uint32     `json:"profile_id"`
+	ProfileID string     `json:"profile_id"`
 	AccountID string     `json:"account_id"`
 	Duration  int        `json:"duration,omitempty"`
-	CreatedAt *time.Time `json:"created_at"`
+	CreatedAt *time.Time `json:"created_at,omitempty"`
 	Nodes     Nodes      `json:"nodes"`
 }
 
 type Stream struct {
 	AccountID   string            `json:"account_id"`
-	StreamID    uint32            `json:"stream_id"`
-	ProfileID   uint32            `json:"profile_id"`
+	StreamID    string            `json:"stream_id"`
+	ProfileID   string            `json:"profile_id"`
 	Endpoints   map[string]string `json:"endpoints,omitempty"`
 	CreatedAt   *time.Time        `json:"created_at"`
 	ScheduledAt *time.Time        `json:"scheduled_at,omitempty"`
@@ -95,6 +95,6 @@ func (s State) String() string {
 }
 
 type postResp struct {
-	ProfileID uint32 `json:"profile_id"`
-	StreamID  uint32 `json:"stream_id"`
+	ProfileID string `json:"profile_id"`
+	StreamID  string `json:"stream_id"`
 }

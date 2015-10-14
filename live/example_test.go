@@ -68,12 +68,12 @@ func ExampleClient_streamCreate() {
 		},
 	}
 
-	stream := &Stream{
-		ProfileID: 999999, // existing profile_id
-		Duration:  10,     // 10 minutes
+	stream := &live.Stream{
+		ProfileID: "999999", // existing profile_id
+		Duration:  10,       // 10 minutes
 	}
 
-	streamID, err := client.StreamCreate(&stream)
+	streamID, err := client.StreamCreate(stream)
 	if err != nil {
 		panic(err)
 	}
@@ -117,11 +117,11 @@ func ExampleClient_streamCreateProfile() {
 		},
 	}
 
-	profile := live.Profile{
+	profile := &live.Profile{
 		Nodes: nodes,
 	}
 
-	streamID, profileID, err := client.StreamCreateProfile(&profile)
+	streamID, profileID, err := client.StreamCreateProfile(profile)
 	if err != nil {
 		panic(err)
 	}
@@ -141,7 +141,7 @@ func ExampleClient_streamDuration() {
 		},
 	}
 
-	streamID, err := client.StreamDuration(999999, time.Minute*5)
+	streamID, err := client.StreamDuration("999999", time.Minute*5)
 	if err != nil {
 		panic(err)
 	}
