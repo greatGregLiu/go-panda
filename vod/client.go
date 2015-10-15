@@ -1,5 +1,5 @@
-// Package panda provides a client for PandaStream service
-package panda
+// package vod provides a client for PandaStream file transcoding service
+package vod
 
 //go:generate structgen -dir=json -tags=url -o=models.go -pkg=panda -types=created_at:Time,updated_at:Time,height:int,width:int,duration:int,file_size:int64,audio_bitrate:int,audio_channels:int,video_bitrate:int,audio_sample_rate:int,watermark_bottom:int,watermark_height:int,watermark_left:int,watermark_right:int,watermark_top:int,watermark_width:int,keyframe_interval:int,buffer_size:int,max_rate:int,frame_count:int,h264_crf:int,status:Status,page:int,per_page:int,aspect_mode:AspectMode
 
@@ -9,9 +9,12 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"net/url"
 	"os"
 	"time"
+
+	"github.com/pandastream/go-panda/client"
 
 	"github.com/ernesto-jimenez/go-querystring/query"
 )
@@ -57,25 +60,37 @@ func (t *Time) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Manager provides methods of getting certain data from the Panda Cloud using panda Client
-type Manager struct {
-	Client *Client
+// Client provides methods of getting certain data from the Panda Cloud using panda Client
+type Client struct {
+	PandaClient *client.Client
 }
 
-func (m *Manager) manageGet(url string, v interface{}, params url.Values) (err error) {
-	b, err := m.Client.Get(url, params)
+func NewClient(host, token string, httpClient *http.Client) *Client {
+	return &Client{
+		PandaClient: &client.Client{
+			Host: host,
+			Options: &client.ClientOptions{
+				Token: token,
+			},
+			HTTPClient: httpClient,
+		},
+	}
+}
+
+func (c *Client) get(url string, v interface{}, params url.Values) (err error) {
+	b, err := c.PandaClient.Get(url, params)
 	if err == nil {
 		err = json.Unmarshal(b, v)
 	}
 	return
 }
 
-func (m *Manager) managePost(url string, r io.Reader, p, v interface{}) error {
+func (c *Client) post(url string, r io.Reader, p, v interface{}) error {
 	params, err := query.Values(p)
 	if err != nil {
 		return err
 	}
-	b, err := m.Client.Post(url, "", params, r)
+	b, err := c.PandaClient.Post(url, "", params, r)
 	if err != nil {
 		return err
 	}
@@ -83,41 +98,41 @@ func (m *Manager) managePost(url string, r io.Reader, p, v interface{}) error {
 }
 
 // Cloud gets cloud by the given cloud ID
-func (m *Manager) Cloud(id string) (*Cloud, error) {
-	c := new(Cloud)
-	if err := m.manageGet(fmt.Sprintf(cloudsIdPath, id), c, nil); err != nil {
+func (c *Client) Cloud(id string) (*Cloud, error) {
+	cl := new(Cloud)
+	if err := c.get(fmt.Sprintf(cloudsIdPath, id), cl, nil); err != nil {
 		return nil, err
 	}
-	return c, nil
+	return cl, nil
 }
 
 // Clouds gets all clouds on the given account
-func (m *Manager) Clouds() (cs []Cloud, err error) {
-	err = m.manageGet(cloudsPath, &cs, nil)
+func (c *Client) Clouds() (cs []Cloud, err error) {
+	err = c.get(cloudsPath, &cs, nil)
 	return
 }
 
 // NewEncoding creates a new encoding for the existing video
-func (m *Manager) NewEncoding(er *NewEncodingRequest) (*Encoding, error) {
+func (c *Client) NewEncoding(er *NewEncodingRequest) (*Encoding, error) {
 	e := new(Encoding)
-	if err := m.managePost(encodingsPath, nil, er, &e); err != nil {
+	if err := c.post(encodingsPath, nil, er, &e); err != nil {
 		return nil, err
 	}
 	return e, nil
 }
 
 // Encoding gets encoding object with the given id
-func (m *Manager) Encoding(id string) (*Encoding, error) {
+func (c *Client) Encoding(id string) (*Encoding, error) {
 	e := new(Encoding)
-	if err := m.manageGet(fmt.Sprintf(encodingsIdPath, id), e, nil); err != nil {
+	if err := c.get(fmt.Sprintf(encodingsIdPath, id), e, nil); err != nil {
 		return nil, err
 	}
 	return e, nil
 }
 
-// Encodings get all encodings on the current cloud. Encodings can be filtered by options
+// Encodings gets all encodings on the current cloud. Encodings can be filtered by options
 // set in the EncodingRequest struct. If EncodingRequest is nil defaults are going to be used
-func (m *Manager) Encodings(er *EncodingRequest) (es []Encoding, err error) {
+func (c *Client) Encodings(er *EncodingRequest) (es []Encoding, err error) {
 	var params url.Values
 	if er != nil {
 		params, err = query.Values(er)
@@ -125,25 +140,25 @@ func (m *Manager) Encodings(er *EncodingRequest) (es []Encoding, err error) {
 			return
 		}
 	}
-	err = m.manageGet(encodingsPath, &es, params)
+	err = c.get(encodingsPath, &es, params)
 	return
 }
 
 // Cancel encoding with the given id
-func (m *Manager) Cancel(id string) error {
-	_, err := m.Client.Post(fmt.Sprintf(encodingsIdCancelPath, id), "", nil, nil)
+func (c *Client) Cancel(id string) error {
+	_, err := c.PandaClient.Post(fmt.Sprintf(encodingsIdCancelPath, id), "", nil, nil)
 	return err
 }
 
 // Retry encoding with the given id
-func (m *Manager) Retry(id string) error {
-	_, err := m.Client.Post(fmt.Sprintf(encodingsIdRetryPath, id), "", nil, nil)
+func (c *Client) Retry(id string) error {
+	_, err := c.PandaClient.Post(fmt.Sprintf(encodingsIdRetryPath, id), "", nil, nil)
 	return err
 }
 
 // Delete accepts *Profile, *Video and *Encoding types and deletes those objects
 // from Panda's database by their ID
-func (m *Manager) Delete(v interface{}) error {
+func (c *Client) Delete(v interface{}) error {
 	var path string
 	switch t := v.(type) {
 	case *Profile:
@@ -155,30 +170,30 @@ func (m *Manager) Delete(v interface{}) error {
 	default:
 		panic("Invalid type")
 	}
-	_, err := m.Client.Delete(path)
+	_, err := c.PandaClient.Delete(path)
 	return err
 }
 
 // NewProfile creates new profile based on profile request object
-func (m *Manager) NewProfile(pr *NewProfileRequest) (*Profile, error) {
+func (c *Client) NewProfile(pr *NewProfileRequest) (*Profile, error) {
 	p := new(Profile)
-	if err := m.managePost(profilesPath, nil, pr, p); err != nil {
+	if err := c.post(profilesPath, nil, pr, p); err != nil {
 		return nil, err
 	}
 	return p, nil
 }
 
 // Profile gets profile with the given ID
-func (m *Manager) Profile(id string) (*Profile, error) {
+func (c *Client) Profile(id string) (*Profile, error) {
 	p := new(Profile)
-	if err := m.manageGet(fmt.Sprintf(profilesIdPath, id), p, nil); err != nil {
+	if err := c.get(fmt.Sprintf(profilesIdPath, id), p, nil); err != nil {
 		return nil, err
 	}
 	return p, nil
 }
 
 // Profiles gets all profiles from the current cloud
-func (m *Manager) Profiles(pr *ProfileRequest) (ps []Profile, err error) {
+func (c *Client) Profiles(pr *ProfileRequest) (ps []Profile, err error) {
 	var params url.Values
 	if pr != nil {
 		params, err = query.Values(pr)
@@ -186,13 +201,13 @@ func (m *Manager) Profiles(pr *ProfileRequest) (ps []Profile, err error) {
 			return
 		}
 	}
-	err = m.manageGet(profilesPath, &ps, params)
+	err = c.get(profilesPath, &ps, params)
 	return
 }
 
 // Update accepts *Profile and *Notification types and updates records based on the given objects.
 // Warning: the given parameter might change if any of the parameters are invalid
-func (m *Manager) Update(v interface{}) error {
+func (c *Client) Update(v interface{}) error {
 	var path string
 	switch t := v.(type) {
 	case *Profile:
@@ -206,7 +221,7 @@ func (m *Manager) Update(v interface{}) error {
 	if err != nil {
 		return err
 	}
-	b, err := m.Client.Put(path, "", params, nil)
+	b, err := c.PandaClient.Put(path, "", params, nil)
 	if err != nil {
 		return err
 	}
@@ -215,23 +230,23 @@ func (m *Manager) Update(v interface{}) error {
 
 // NewVideo gets file name path and potential additional options in a form of
 // VideoRequest type and based on this creates a new video in Panda
-func (m *Manager) NewVideo(file string, vr *NewVideoRequest) (*Video, error) {
+func (c *Client) NewVideo(file string, vr *NewVideoRequest) (*Video, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
-	return m.NewVideoReader(f, file, vr)
+	return c.NewVideoReader(f, file, vr)
 }
 
 // NewVideoURL creates a new video in Panda based on the given source url and potential
 // additional options in form of VideoRequest struct
-func (m *Manager) NewVideoURL(URL string, vr *NewVideoRequest) (*Video, error) {
+func (c *Client) NewVideoURL(URL string, vr *NewVideoRequest) (*Video, error) {
 	params, err := query.Values(vr)
 	if err != nil {
 		return nil, err
 	}
 	params.Set("source_url", URL)
-	b, err := m.Client.Post(videosPath, "", params, nil)
+	b, err := c.PandaClient.Post(videosPath, "", params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +258,7 @@ func (m *Manager) NewVideoURL(URL string, vr *NewVideoRequest) (*Video, error) {
 }
 
 // NewVideoReader creates a new video in Panda with the given name and reading from the given reader
-func (m *Manager) NewVideoReader(r io.Reader, name string, vr *NewVideoRequest) (*Video, error) {
+func (c *Client) NewVideoReader(r io.Reader, name string, vr *NewVideoRequest) (*Video, error) {
 	buf := new(bytes.Buffer)
 	w := multipart.NewWriter(buf)
 	if err := w.SetBoundary("--panda--"); err != nil {
@@ -265,7 +280,7 @@ func (m *Manager) NewVideoReader(r io.Reader, name string, vr *NewVideoRequest) 
 			return nil, err
 		}
 	}
-	b, err := m.Client.Post(videosPath, w.FormDataContentType(), params, buf)
+	b, err := c.PandaClient.Post(videosPath, w.FormDataContentType(), params, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -277,9 +292,9 @@ func (m *Manager) NewVideoReader(r io.Reader, name string, vr *NewVideoRequest) 
 }
 
 // Video gets video with the given id
-func (m *Manager) Video(id string) (*Video, error) {
+func (c *Client) Video(id string) (*Video, error) {
 	v := new(Video)
-	if err := m.manageGet(fmt.Sprintf(videosIdPath, id), &v, nil); err != nil {
+	if err := c.get(fmt.Sprintf(videosIdPath, id), &v, nil); err != nil {
 		return nil, err
 	}
 	return v, nil
@@ -287,7 +302,7 @@ func (m *Manager) Video(id string) (*Video, error) {
 
 // Videos gets all the videos from the current cloud. Videos can be filtered by options
 // set in the VideoRequest struct. If VideoRequest is nil then defaults are going to be used
-func (m *Manager) Videos(vr *VideoRequest) (v []Video, err error) {
+func (c *Client) Videos(vr *VideoRequest) (v []Video, err error) {
 	var params url.Values
 	if vr != nil {
 		params, err = query.Values(vr)
@@ -295,14 +310,14 @@ func (m *Manager) Videos(vr *VideoRequest) (v []Video, err error) {
 			return nil, err
 		}
 	}
-	err = m.manageGet(videosPath, &v, params)
+	err = c.get(videosPath, &v, params)
 	return
 }
 
-// VideoEncoding get alls encodings related to the video with the given id. Encodings can be
+// VideoEncoding gets all encodings related to the video with the given id. Encodings can be
 // filtered by options set in the EncodingRequest struct.
 // If EncodingRequest is nil defaults are going to be used
-func (m *Manager) VideoEncodings(id string, er *EncodingRequest) (es []Encoding, err error) {
+func (c *Client) VideoEncodings(id string, er *EncodingRequest) (es []Encoding, err error) {
 	var params url.Values
 	if er != nil {
 		params, err = query.Values(er)
@@ -310,29 +325,29 @@ func (m *Manager) VideoEncodings(id string, er *EncodingRequest) (es []Encoding,
 			return nil, err
 		}
 	}
-	err = m.manageGet(fmt.Sprintf(videosIdEncodingPath, id), &es, params)
+	err = c.get(fmt.Sprintf(videosIdEncodingPath, id), &es, params)
 	return
 }
 
 // VideoMetaData gets meta data for the video with the given id
-func (m *Manager) VideoMetaData(id string) (MetaData, error) {
+func (c *Client) VideoMetaData(id string) (MetaData, error) {
 	md := MetaData{}
-	if err := m.manageGet(fmt.Sprintf(videosIdMetaDataPath, id), &md, nil); err != nil {
+	if err := c.get(fmt.Sprintf(videosIdMetaDataPath, id), &md, nil); err != nil {
 		return nil, err
 	}
 	return md, nil
 }
 
 // DeleteSource deletes the source video for the given video id
-func (m *Manager) DeleteSource(id string) error {
-	_, err := m.Client.Delete(fmt.Sprintf(videosIdDeleteSourcePath, id))
+func (c *Client) DeleteSource(id string) error {
+	_, err := c.PandaClient.Delete(fmt.Sprintf(videosIdDeleteSourcePath, id))
 	return err
 }
 
 // Notifications gets notifications for the current cloud
-func (m *Manager) Notifications() (*Notification, error) {
+func (c *Client) Notifications() (*Notification, error) {
 	n := new(Notification)
-	if err := m.manageGet(notificationsPath, n, nil); err != nil {
+	if err := c.get(notificationsPath, n, nil); err != nil {
 		return nil, err
 	}
 	return n, nil

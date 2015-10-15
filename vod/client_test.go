@@ -1,4 +1,4 @@
-package panda
+package vod
 
 import (
 	"encoding/json"
@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/pandastream/go-panda/client"
 )
 
 func mustWrite(w http.ResponseWriter, b []byte) {
@@ -17,21 +19,12 @@ func mustWrite(w http.ResponseWriter, b []byte) {
 	}
 }
 
-func newManager(addr string, t *testing.T) *Manager {
+func newClient(addr string, t *testing.T) *Client {
 	URL, err := url.Parse(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &Manager{
-		Client: &Client{
-			Host: URL.Host,
-			Options: &ClientOptions{
-				CloudID:   "1",
-				AccessKey: "2",
-				SecretKey: "3",
-			},
-		},
-	}
+	return NewClient(URL.Host, "", nil)
 }
 
 func TestDelete(t *testing.T) {
@@ -50,7 +43,7 @@ func TestDelete(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	m := newManager(ts.URL, t)
+	m := newClient(ts.URL, t)
 	cases := []struct {
 		obj   interface{}
 		valid bool
@@ -69,7 +62,7 @@ func TestDelete(t *testing.T) {
 		{
 			&Encoding{},
 			true,
-			&Error{Code: http.StatusBadRequest},
+			&client.Error{Code: http.StatusBadRequest},
 		},
 		{
 			&Notification{},
@@ -118,7 +111,7 @@ func TestUpdate(t *testing.T) {
 		mustWrite(w, b)
 	}))
 	defer ts.Close()
-	m := newManager(ts.URL, t)
+	m := newClient(ts.URL, t)
 	zeroTime, err := time.Parse(timeFormat, "0001/01/01 00:00:00 +0000")
 	if err != nil {
 		t.Fatal(err)

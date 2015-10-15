@@ -1,48 +1,66 @@
+// package vod provides a client for Live transcoding service
 package live
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"time"
 
-	"github.com/pandastream/go-panda"
+	"github.com/pandastream/go-panda/client"
 )
 
 type Client struct {
-	Client *panda.Client
+	PandaClient *client.Client
 }
 
-func (cl *Client) get(path string, v interface{}) error {
-	b, err := cl.Client.Get(path, nil)
+func NewClient(token string, httpClient *http.Client) *Client {
+	return &Client{
+		PandaClient: &client.Client{
+			Host: client.HostGCE,
+			Options: &client.ClientOptions{
+				Token:     token,
+				Namespace: "live",
+			},
+			HTTPClient: httpClient,
+		},
+	}
+}
+
+func (c *Client) get(path string, v interface{}) error {
+	b, err := c.PandaClient.Get(path, nil)
 	if err != nil {
 		return err
 	}
 	return json.Unmarshal(b, v)
 }
 
-func (cl *Client) ProfilesIDs() (ids []string, err error) {
-	if err := cl.get("/v2/profiles.json", &ids); err != nil {
+// ProfilesIDs lists all existing profiles.
+func (c *Client) ProfilesIDs() (ids []string, err error) {
+	if err := c.get("/v2/profiles.json", &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
-func (cl *Client) Profile(id string) (*Profile, error) {
+// Profile retrieves Profile object with the given id.
+func (c *Client) Profile(id string) (*Profile, error) {
 	profile := Profile{}
-	if err := cl.get(fmt.Sprintf("/v2/profiles/%s.json", id), &profile); err != nil {
+	if err := c.get(fmt.Sprintf("/v2/profiles/%s.json", id), &profile); err != nil {
 		return nil, err
 	}
 	return &profile, nil
 }
 
-func (cl *Client) ProfileCreate(p *Profile) (string, error) {
+// ProfileCreate creates new profile based on the given object.
+func (c *Client) ProfileCreate(p *Profile) (string, error) {
 	b, err := json.Marshal(p)
 	if err != nil {
 		return "", err
 	}
-	b, err = cl.Client.Post("/v2/profiles.json", "application/json", nil, bytes.NewReader(b))
+	b, err = c.PandaClient.Post("/v2/profiles.json", "application/json", nil, bytes.NewReader(b))
 	if err != nil {
 		return "", err
 	}
@@ -53,32 +71,36 @@ func (cl *Client) ProfileCreate(p *Profile) (string, error) {
 	return resp.ProfileID, nil
 }
 
-func (cl *Client) ProfileDelete(id string) error {
-	_, err := cl.Client.Delete(fmt.Sprintf("/v2/profiles/%s.json", id))
+// ProfileDelete deletes profile with the given id.
+func (c *Client) ProfileDelete(id string) error {
+	_, err := c.PandaClient.Delete(fmt.Sprintf("/v2/profiles/%s.json", id))
 	return err
 }
 
-func (cl *Client) StreamsIDs() (ids []string, err error) {
-	if err := cl.get("/v2/streams.json", &ids); err != nil {
+// StreamsIDs lists all existing streams.
+func (c *Client) StreamsIDs() (ids []string, err error) {
+	if err := c.get("/v2/streams.json", &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
-func (cl *Client) Stream(id string) (*Stream, error) {
+// Stream retrieves a stream object with the given id.
+func (c *Client) Stream(id string) (*Stream, error) {
 	stream := Stream{}
-	if err := cl.get(fmt.Sprintf("/v2/streams/%s.json", id), &stream); err != nil {
+	if err := c.get(fmt.Sprintf("/v2/streams/%s.json", id), &stream); err != nil {
 		return nil, err
 	}
 	return &stream, nil
 }
 
-func (cl *Client) StreamCreate(s *Stream) (string, error) {
+// StreamCreate creates a stream based on the given object.
+func (c *Client) StreamCreate(s *Stream) (string, error) {
 	b, err := json.Marshal(s)
 	if err != nil {
 		return "", err
 	}
-	b, err = cl.Client.Post("/v2/streams.json", "application/json", nil, bytes.NewReader(b))
+	b, err = c.PandaClient.Post("/v2/streams.json", "application/json", nil, bytes.NewReader(b))
 	if err != nil {
 		return "", err
 	}
@@ -89,12 +111,14 @@ func (cl *Client) StreamCreate(s *Stream) (string, error) {
 	return resp.StreamID, nil
 }
 
-func (cl *Client) StreamCreateProfile(streamName string, p *Profile) (streamID, profileID string, err error) {
+// StreamCreateProfile creates a stream and a profile based on the given profile object.
+// If stream name argument is an empty string then the stream's name will be set to it's ID.
+func (c *Client) StreamCreateProfile(streamName string, p *Profile) (streamID, profileID string, err error) {
 	b, err := json.Marshal(reqStreamProfile{Profile: p, StreamName: streamName})
 	if err != nil {
 		return "", "", err
 	}
-	b, err = cl.Client.Post("/v2/streams/profile.json", "application/json", nil, bytes.NewReader(b))
+	b, err = c.PandaClient.Post("/v2/streams/profile.json", "application/json", nil, bytes.NewReader(b))
 	if err != nil {
 		return "", "", err
 	}
@@ -105,10 +129,11 @@ func (cl *Client) StreamCreateProfile(streamName string, p *Profile) (streamID, 
 	return resp.StreamID, resp.ProfileID, nil
 }
 
-func (cl *Client) StreamDuration(id string, dur time.Duration) (streamID string, err error) {
+// StreamDuration updates stream's duration.
+func (c *Client) StreamDuration(id string, dur time.Duration) (streamID string, err error) {
 	v := url.Values{}
 	v.Add("duration", dur.String())
-	b, err := cl.Client.Put(fmt.Sprintf("/v2/streams/%s/duration.json", id), "application/json", v, nil)
+	b, err := c.PandaClient.Put(fmt.Sprintf("/v2/streams/%s/duration.json", id), "application/json", v, nil)
 	if err != nil {
 		return "", err
 	}
@@ -119,7 +144,8 @@ func (cl *Client) StreamDuration(id string, dur time.Duration) (streamID string,
 	return resp.StreamID, nil
 }
 
-func (cl *Client) StreamDelete(id string) error {
-	_, err := cl.Client.Delete(fmt.Sprintf("/v2/streams/%s.json", id))
+// StreamDelete deletes a stream with the given id.
+func (c *Client) StreamDelete(id string) error {
+	_, err := c.PandaClient.Delete(fmt.Sprintf("/v2/streams/%s.json", id))
 	return err
 }

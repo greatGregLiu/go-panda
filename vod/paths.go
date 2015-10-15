@@ -1,4 +1,4 @@
-package panda
+package vod
 
 const videosPath = "/videos.json"
 const videosIdPath = "/videos/%s.json"

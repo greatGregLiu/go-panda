@@ -1,4 +1,5 @@
-package panda
+// package client provides a client capable of communicating with Pandastream transcoding service.
+package client
 
 import (
 	"crypto/hmac"
@@ -39,15 +40,15 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
-func (cl *Client) hostPort() string {
-	if cl.Host != "" {
-		return cl.Host
+func (c *Client) hostPort() string {
+	if c.Host != "" {
+		return c.Host
 	}
 	return HostUS
 }
 
-func (cl *Client) host() string {
-	hp := cl.hostPort()
+func (c *Client) host() string {
+	hp := c.hostPort()
 	i := strings.Index(hp, ":")
 	if i < 0 {
 		return hp
@@ -55,66 +56,66 @@ func (cl *Client) host() string {
 	return hp[:i]
 }
 
-func (cl *Client) namespace() string {
-	if cl.Options.Namespace == "" {
+func (c *Client) namespace() string {
+	if c.Options.Namespace == "" {
 		return "v2"
 	}
-	return cl.Options.Namespace
+	return c.Options.Namespace
 }
 
-func (cl *Client) httpclient() *http.Client {
-	if cl.HTTPClient != nil {
-		return cl.HTTPClient
+func (c *Client) httpclient() *http.Client {
+	if c.HTTPClient != nil {
+		return c.HTTPClient
 	}
 	return http.DefaultClient
 }
 
-func (cl *Client) addAuthParams(v url.Values, t time.Time) {
-	v.Set("access_key", cl.Options.AccessKey)
-	v.Set("cloud_id", cl.Options.CloudID)
+func (c *Client) addAuthParams(v url.Values, t time.Time) {
+	v.Set("access_key", c.Options.AccessKey)
+	v.Set("cloud_id", c.Options.CloudID)
 	v.Set("timestamp", t.Format(time.RFC3339Nano))
 }
 
-func (cl *Client) fixQuery(s string) string {
+func (c *Client) fixQuery(s string) string {
 	return queryFixer.Replace(s)
 }
 
-func (cl *Client) buildSignature(v url.Values, method, u string) (sign string, err error) {
-	toSign := fmt.Sprintf("%s\n%s\n%s\n%s", method, cl.host(), u, cl.fixQuery(v.Encode()))
-	mac := hmac.New(sha256.New, []byte(cl.Options.SecretKey))
+func (c *Client) buildSignature(v url.Values, method, u string) (sign string, err error) {
+	toSign := fmt.Sprintf("%s\n%s\n%s\n%s", method, c.host(), u, c.fixQuery(v.Encode()))
+	mac := hmac.New(sha256.New, []byte(c.Options.SecretKey))
 	if _, err = mac.Write([]byte(toSign)); err == nil {
 		sign = base64.StdEncoding.EncodeToString(mac.Sum(nil))
 	}
 	return
 }
 
-func (cl *Client) buildURL(v url.Values, urlPath string) *url.URL {
+func (c *Client) buildURL(v url.Values, urlPath string) *url.URL {
 	scheme := "http"
-	if strings.HasSuffix(cl.hostPort(), ":443") {
+	if strings.HasSuffix(c.hostPort(), ":443") {
 		scheme = "https"
 	}
 	return &url.URL{
 		Scheme:   scheme,
-		Host:     cl.hostPort(),
-		Path:     path.Join(cl.namespace(), urlPath),
+		Host:     c.hostPort(),
+		Path:     path.Join(c.namespace(), urlPath),
 		RawQuery: v.Encode(),
 	}
 }
 
-func (cl *Client) do(method, path, cntType string,
+func (c *Client) do(method, path, cntType string,
 	params url.Values, r io.Reader) (b []byte, err error) {
 	if params == nil {
 		params = url.Values{}
 	}
-	if err = cl.authParams(method, path, params); err != nil {
+	if err = c.authParams(method, path, params); err != nil {
 		return
 	}
-	req, err := http.NewRequest(method, cl.buildURL(params, path).String(), r)
+	req, err := http.NewRequest(method, c.buildURL(params, path).String(), r)
 	if err != nil {
 		return
 	}
 	req.Header.Set("Content-Type", cntType)
-	resp, err := cl.httpclient().Do(req)
+	resp, err := c.httpclient().Do(req)
 	if err != nil {
 		return
 	}
@@ -133,22 +134,22 @@ func (cl *Client) do(method, path, cntType string,
 	return
 }
 
-func (cl *Client) authParams(method, path string, params url.Values) error {
-	if cl.Options.Token != "" {
-		params.Add("token", cl.Options.Token)
+func (c *Client) authParams(method, path string, params url.Values) error {
+	if c.Options.Token != "" {
+		params.Add("token", c.Options.Token)
 		return nil
 	}
-	return cl.SignParams(method, path, params)
+	return c.SignParams(method, path, params)
 }
 
 // SignParams signs given parameters by adding required authorization
 // fields and values. Params cannot be nil.
-func (cl *Client) SignParams(method, path string, params url.Values) error {
+func (c *Client) SignParams(method, path string, params url.Values) error {
 	if params == nil {
 		panic("params cannot be nil!")
 	}
-	cl.addAuthParams(params, time.Now().UTC())
-	s, err := cl.buildSignature(params, method, path)
+	c.addAuthParams(params, time.Now().UTC())
+	s, err := c.buildSignature(params, method, path)
 	if err != nil {
 		return err
 	}
@@ -157,24 +158,24 @@ func (cl *Client) SignParams(method, path string, params url.Values) error {
 }
 
 // Get issues a signed GET request to the Panda Cloud
-func (cl *Client) Get(url string, params url.Values) ([]byte, error) {
-	return cl.do("GET", url, "", params, nil)
+func (c *Client) Get(url string, params url.Values) ([]byte, error) {
+	return c.do("GET", url, "", params, nil)
 }
 
 // Post issues a signed POST request to the Panda Cloud and creates content based on
 // the given params
-func (cl *Client) Post(url, cntType string, params url.Values, r io.Reader) ([]byte, error) {
-	return cl.do("POST", url, cntType, params, r)
+func (c *Client) Post(url, cntType string, params url.Values, r io.Reader) ([]byte, error) {
+	return c.do("POST", url, cntType, params, r)
 }
 
 // Put issues a signed PUT request to the Panda Cloud and updates object according to
 // given params
-func (cl *Client) Put(url, cntType string, params url.Values, r io.Reader) ([]byte, error) {
-	return cl.do("PUT", url, cntType, params, r)
+func (c *Client) Put(url, cntType string, params url.Values, r io.Reader) ([]byte, error) {
+	return c.do("PUT", url, cntType, params, r)
 }
 
 // Delete issues a signed DELETE request to the Panda Cloud and deletes content under
 // the given url
-func (cl *Client) Delete(url string) ([]byte, error) {
-	return cl.do("DELETE", url, "", nil, nil)
+func (c *Client) Delete(url string) ([]byte, error) {
+	return c.do("DELETE", url, "", nil, nil)
 }

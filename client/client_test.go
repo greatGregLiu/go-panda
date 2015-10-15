@@ -1,4 +1,4 @@
-package panda
+package client
 
 import (
 	"net/url"
@@ -20,7 +20,7 @@ func TestBuildSignature(t *testing.T) {
 	d := time.Date(2011, 3, 1, 15, 39, 10, 260762000, time.UTC)
 	v := url.Values{}
 	cl.addAuthParams(v, d)
-	sign, err := cl.buildSignature(v, "GET", videosPath)
+	sign, err := cl.buildSignature(v, "GET", "/videos.json")
 	if err != nil {
 		t.Fatalf("want err=nil; got %v", err)
 	}
