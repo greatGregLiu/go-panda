@@ -56,7 +56,7 @@ type Stream struct {
 	StreamID    string            `json:"stream_id"`
 	ProfileID   string            `json:"profile_id"`
 	Endpoints   map[string]string `json:"endpoints,omitempty"`
-	CreatedAt   *time.Time        `json:"created_at"`
+	CreatedAt   *time.Time        `json:"created_at,omitempty"`
 	ScheduledAt *time.Time        `json:"scheduled_at,omitempty"`
 	StartedAt   *time.Time        `json:"started_at,omitempty"`
 	EndedAt     *time.Time        `json:"ended_at,omitempty"`
